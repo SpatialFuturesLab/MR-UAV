@@ -1,4 +1,4 @@
-# Spatial Fabrication Lab Bebop Autonomy
+# Spatial Futures Lab Bebop Autonomy
 
 
 Software for the Bebop Autonomy and integration with Grasshopper.

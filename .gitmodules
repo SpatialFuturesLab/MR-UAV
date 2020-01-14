@@ -1,0 +1,3 @@
+[submodule "mrac-iaac/bebop_control"]
+	path = mrac-iaac/bebop_control
+	url = https://github.com/MRAC-IAAC/bebop_control.git

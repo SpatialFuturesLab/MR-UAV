@@ -60,7 +60,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 6. __Clone SFL_Bebop workspace__
 
-	```git clone https://github.gatech.edu/pvishal3/SFL_Bebop.git src/SFL_Bebop```
+	```git clone https://github.com/SpatialFuturesLab/MR-UAV.git```
 
 7. __Clone GTSAM into bebop_ws and build__
 

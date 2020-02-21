@@ -95,7 +95,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 ### 1. Capture Points from Rigid Bodies
 1. __Define Rigid Body (Windows)__
-   * Create a rigid body in Motive(Windows) using a minimum of 3 markers
+   * Create a rigid body in Motive using a minimum of 3 markers
    * Label it using the naming convention GeomToolX where X is an upper case letter (A-Z) 
    
 2. __Run Python Script (Ubuntu)__
@@ -103,14 +103,17 @@ Software for the Bebop Autonomy and integration with Grasshopper.
    * With the terminal active, press a key X on the keyboard (A - Z) to capture the rigid body GeomToolX corresponding to the pressed key
    * The position and orientation of this rigid body can be obtained by subscribing to the rostopic /rigid_body/GeomToolX
    ```bebop```
+   
    ```rostopic echo /rigid_body/GeomToolX```
    
 ### 2. Autonomous Flight
 1. __Launch Drone__
 	```bebop```
+	
 	```roslaunch bebop_tools joy_teleop.launch```
 2. __Run Python Script__
 	```bebop```
+	
 	```python bebop_controller.py``` 
 
 3. __Toggle Autonomous Mode__
@@ -125,10 +128,12 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 ### 3. Manual Flight
 1. __Launch Drone__
 	```bebop```
+	
 	```roslaunch bebop_tools joy_teleop.launch```
 
 2. __Joystick Control__
 	```bebop```
+	
 	```roslaunch bebop_tools joy_teleop.launch```
 	
 3. __Update Joystick Sensitivity__

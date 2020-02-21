@@ -13,6 +13,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 ### 1. Install Prerequisites
 1. __Install [Ubuntu 16.04 64-bit](http://www.ubuntu.com)__
+   
    _Tutorials_
 
    The following tutorials could be followed to install Ubuntu from USB.

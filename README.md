@@ -108,10 +108,12 @@ Software for the Bebop Autonomy and integration with Grasshopper.
    
 ### 2. Autonomous Flight
 1. __Launch Drone__
+
 	```bebop```
 	
 	```roslaunch bebop_tools joy_teleop.launch```
 2. __Run Python Script__
+
 	```bebop```
 	
 	```python bebop_controller.py``` 
@@ -127,11 +129,13 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 	
 ### 3. Manual Flight
 1. __Launch Drone__
+
 	```bebop```
 	
 	```roslaunch bebop_tools joy_teleop.launch```
 
 2. __Joystick Control__
+
 	```bebop```
 	
 	```roslaunch bebop_tools joy_teleop.launch```

@@ -76,10 +76,14 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 	```catkin build```
 3. __Update bashrc__
+
 	```alias bebop = source ~/devel/setup.sh```
+
 	Add the above line of code with the path of the setup.sh in bashrc. Everytime a new terminal is opened, type bebop.
 4. __Launch Drone__
+
 	```bebop```
+
 	```roslaunch bebop_driver bebop_node.launch```
 
 ### 4. Communication

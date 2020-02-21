@@ -9,6 +9,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 1. [Install Prerequisites](#1-install-prerequisites)
 2. [Clone repository](#2-clone-or-fork-repositories)
 3. [Compilation/Running](#3-compilation-running)
+4. [Communication](#3-communication)
 
 ### 1. Install Prerequisites
 1. __Install [Ubuntu 16.04 64-bit](http://www.ubuntu.com)__
@@ -62,19 +63,6 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 	```git clone https://github.com/SpatialFuturesLab/MR-UAV.git```
 
-7. __Clone GTSAM into bebop_ws and build__
-
-	```git clone https://bitbucket.org/gtborg/gtsam.git```
-	
-	```sudo pip install Cython backports_abc numpy```
-	
-	```cd gtsam```
-	
-	```mkdir build && cd build```
-	
-	```cmake -DGTSAM_INSTALL_CYTHON_TOOLBOX=ON -DGTSAM_PYTHON_VERSION=2.7 ..```
- 
-
 
 ### 3. Compilation & Running
 1. __Update rosdep and install dependencies__
@@ -86,3 +74,66 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 2. __Build the workspace__
 
 	```catkin build```
+3. __Update bashrc__
+	```alias bebop = source ~/devel/setup.sh```
+	Add the above line of code with the path of the setup.sh in bashrc. Everytime a new terminal is opened, type bebop.
+4. __Launch Drone__
+	```bebop```
+	```roslaunch bebop_driver bebop_node.launch```
+
+### 4. Communication
+ * https://wiki.teltonika-networks.com/view/Setting_up_a_Static_IP_address_on_a_Ubuntu_16.04_PC
+ * https://www.dummies.com/programming/networking/configuring-network-connections-windows-10/
+ 
+## Operating Procedures
+
+### Contents
+1. [Capture Points from Rigid Bodies](#1-capture-points)
+2. [Autonomous Flight](#2-autonomous-flight)
+3. [Manual Flight](#3-manual-flight)
+4. [Marker Snapshot](#3-marker-snapshot)
+
+### 1. Capture Points from Rigid Bodies
+1. __Define Rigid Body (Windows)__
+   * Create a rigid body in Motive(Windows) using a minimum of 3 markers
+   * Label it using the naming convention GeomToolX where X is an upper case letter (A-Z) 
+   
+2. __Run Python Script (Ubuntu)__
+   * Run Python script(Ubuntu) capture_rigid_body.py
+   * With the terminal active, press a key X on the keyboard (A - Z) to capture the rigid body GeomToolX corresponding to the pressed key
+   * The position and orientation of this rigid body can be obtained by subscribing to the rostopic /rigid_body/GeomToolX
+   ```bebop```
+   ```rostopic echo /rigid_body/GeomToolX```
+   
+### 2. Autonomous Flight
+1. __Launch Drone__
+	```bebop```
+	```roslaunch bebop_tools joy_teleop.launch```
+2. __Run Python Script__
+	```bebop```
+	```python bebop_controller.py``` 
+
+3. __Toggle Autonomous Mode__
+	* Press Buttons (TODO) on Joystick to toggle to/back from autonomous mode 
+	* In autonomous mode, drone can navigate to the positions given to it
+	
+4. __Define Waypoints__ 
+	* Publish to rostopic bebop/setpoints to add waypoints 
+	* If drone does not receive any new waypoints, it hovers at previously defined waypoint
+	
+	
+### 3. Manual Flight
+1. __Launch Drone__
+	```bebop```
+	```roslaunch bebop_tools joy_teleop.launch```
+
+2. __Joystick Control__
+	```bebop```
+	```roslaunch bebop_tools joy_teleop.launch```
+	
+3. __Update Joystick Sensitivity__
+
+	* Update script in bebop_autonomy/bebop_tools/config/xbox360.yaml to change sensitivity of drone commands from joystick
+	* Change scale in lines 13, 18, 23, 28 to 0.5
+### 4. Marker Snapshot
+WIP

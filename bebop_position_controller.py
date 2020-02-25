@@ -8,7 +8,7 @@ from TrajGen import TrajectoryGenerator
 from math import pi, sin, cos
 from nav_msgs.msg import Path
 from sensor_msgs.msg import Joy
-import math
+import math, tf
 
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
@@ -20,14 +20,15 @@ from geometry_msgs.msg import PoseStamped, Pose
 class States:
     def __init__(self, curr):
         self.currentState = curr
-        self.stateTransition = {"IDLE", "IN_FLIGHT", "HOVERING", "NAVIGATING"}
+        self.stateTransition = dict()
         self.stateTransition["IDLE"] = {"TAKE_OFF": "IN_FLIGHT","LAND": "IDLE", "AUTONOMOUS_ENABLE": "IDLE", "AUTONOMOUS_DISABLE": "IDLE", "NAVIGATE": "IDLE", "HOVER": "IDLE"}
         self.stateTransition["IN_FLIGHT"] = {"TAKE_OFF": "IN_FLIGHT","LAND": "IDLE", "AUTONOMOUS_ENABLE": "HOVERING", "AUTONOMOUS_DISABLE": "IN_FLIGHT", "NAVIGATE": "IN_FLIGHT", "HOVER": "IN_FLIGHT"}
         self.stateTransition["HOVERING"] = {"TAKE_OFF": "IN_FLIGHT","LAND": "IDLE", "AUTONOMOUS_ENABLE": "HOVERING", "AUTONOMOUS_DISABLE": "IN_FLIGHT", "NAVIGATE": "NAVIGATING", "HOVER": "HOVERING"}
         self.stateTransition["NAVIGATING"] = {"TAKE_OFF": "IN_FLIGHT","LAND": "IDLE", "AUTONOMOUS_ENABLE": "NAVIGATING", "AUTONOMOUS_DISABLE": "IN_FLIGHT", "NAVIGATE": "NAVIGATING", "HOVER": "HOVERING"}
  
     def get_next_state(self, action):
-        self.currentState == self.stateTransition[self.currentState][action]
+        self.currentState = self.stateTransition[self.currentState][action]
+        print "Quad State: {0}".format(self.currentState)
 
 class TrajectoryGenerator():
     def __init__(self, start_pos, des_pos, T, start_vel = [0,0,0], des_vel = [0,0,0], start_acc = [0,0,0], des_acc = [0,0,0]):
@@ -107,7 +108,7 @@ class PID(object):
 
     def calculate_pid(self, error):
         cur_time = rospy.get_time()
-        if self.prevTime = None:
+        if self.prevTime == None:
             self.prevTime = cur_time
             self.prevError = error
             return self.kp * error
@@ -147,7 +148,7 @@ class PositionController:
         self.trajectory = None
         # self.orientation = list()
         
-        self.position = list()
+        self.position = Point()
         self.nextWaypointPosition = list()
         self.yaw = None
 
@@ -181,29 +182,34 @@ class PositionController:
     def get_yaw_from_quaternion(self, quaternion):
         (roll, pitch, yaw) = tf.transformations.euler_from_quaternion ([quaternion.x, quaternion.y, quaternion.z, quaternion.w])
         return yaw
-
+    # A: 0, B: 1, X: 2, Y: 3
     def joy_callback(self, msg):
-        if msg.buttons[0] == 1 and msg.buttons[1] == 1:
+        if msg.buttons[4] == 1: # RB + LB
+            # print msg
             self.enableAutonomous = not self.enableAutonomous
             if self.enableAutonomous:
                 self.quad.get_next_state("AUTONOMOUS_ENABLE")
             else:
                 self.quad.get_next_state("AUTONOMOUS_DISABLE")
-            print "Quad State: {0}".format(self.quad.currentState)
-        elif msg.buttons[1] == 1 and msg.buttons[2] == 1:
+            
+        elif msg.buttons[2] == 1 and msg.buttons[0] == 1:   # RB + A + X
+            # print msg
             if self.quad.currentState != "IDLE":
                 self.publishLanding.publish(Empty)
-                rospy.sleep(30)
+                rospy.sleep(5)
             self.exit = True
-        elif msg.buttons[0] == 1:
+        elif msg.buttons[3] == 1:   # RB + Y
+            # print msg
             self.quad.get_next_state("TAKE_OFF")
-            print "Quad State: {0}".format(self.quad.currentState)
-            rospy.sleep(30)
-        elif msg.buttons[1] == 1:
+            # print "Quad State: {0}".format(self.quad.currentState)
+            rospy.sleep(5)
+        elif msg.buttons[0] == 1:   # RB + A
+            # print msg
             self.quad.get_next_state("LAND")
-            print "Quad State: {0}".format(self.quad.currentState)
-            rospy.sleep(30)
+            # print "Quad State: {0}".format(self.quad.currentState)
+            rospy.sleep(5)
         elif msg.buttons[2] == 1:
+            # print msg
             pose = self.bebopPose 
             cur_pt = np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
             if self.prevBebopPoint is not None:
@@ -211,24 +217,24 @@ class PositionController:
             if self.prevBebopPoint is None or dist > 0.1: 
                 self.pose_pub_bebop.publish(pose)
                 self.prevBebopPoint = cur_pt
-        elif msg.buttons[4] == 1:
-            pose = self.geomPose
-            cur_pt = np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
-            if self.prevGeomPoint is not None:
-                dist = np.linalg.norm(cur_pt -  self.prevGeomPoint)
-            if self.prevGeomPoint is None or dist > 0.1: 
-                self.pose_pub_geom.publish(pose)
-                self.prevGeomPoint = cur_pt
+        # elif msg.buttons[4] == 1:
+        #     pose = self.geomPose
+        #     cur_pt = np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
+        #     if self.prevGeomPoint is not None:
+        #         dist = np.linalg.norm(cur_pt -  self.prevGeomPoint)
+        #     if self.prevGeomPoint is None or dist > 0.1: 
+        #         self.pose_pub_geom.publish(pose)
+        #         self.prevGeomPoint = cur_pt
 
     def setpoint_callback_bebop(self, msg):
         setpt = msg.position
         if self.waypoints:
             dist = np.linalg.norm(np.array(setpt) -  np.array(self.waypoints[-1]))
             if dist > 0.1:
-                self.waypoints.append(setpt)
+                self.waypoints.append([setpt.x, setpt.y, setpt.z])
                 # self.orientation.append(self.get_yaw_from_quaternion(msg.orientation))
         else:
-            self.waypoints.append(setpt)
+            self.waypoints.append([setpt.x, setpt.y, setpt.z])
 
     def pose_callback_bebop(self, msg):
         self.position = msg.pose.position
@@ -241,7 +247,9 @@ class PositionController:
     def waypoint_update(self):
         if self.nextWaypoint:
             if self.waypoints:
-                self.prevWaypointPosition = self.nextWaypointPosition
+                if len(self.nextWaypointPosition)!=0:
+                    self.prevWaypointPosition = self.nextWaypointPosition
+                print self.waypoints
                 self.nextWaypointPosition = self.waypoints.pop(0)
                 self.trajectory = TrajectoryGenerator(self.prevWaypointPosition,self.nextWaypointPosition, 10)
             else:
@@ -262,7 +270,7 @@ class PositionController:
                     if self.iteration == 100:
                         self.iteration = 0
                         self.alpha = 1.0
-                        self.nextWaypoint = True
+                        # self.nextWaypoint = True
                         self.quad.get_next_state("HOVER")
 
         
@@ -278,8 +286,8 @@ class PositionController:
                     des_vel_y = self.calculate_velocity (self.trajectory.y_c, 0.1 * self.iteration)
                     des_vel_z = self.calculate_velocity (self.trajectory.z_c, 0.1 * self.iteration)
 
-                    erx = self.nextWaypointPosition[0] - self.position[0]
-                    ery = self.nextWaypointPosition[1] - self.position[1]
+                    erx = self.nextWaypointPosition[0] - self.position.x
+                    ery = self.nextWaypointPosition[1] - self.position.y
                     
                     error_x = math.cos(self.yaw) * erx + math.sin(self.yaw) * ery
                     error_y = -math.sin(self.yaw) * erx + math.cos(self.yaw) * ery
@@ -290,7 +298,7 @@ class PositionController:
                     # PID
                     self.moveCmd.linear.x = min(max(-1, (1 - self.alpha) * self.controlX.calculate_pid(error_x) + self.alpha * des_ff_x), 1)
                     self.moveCmd.linear.y = min(max(-1, (1 - self.alpha) * self.controlY.calculate_pid(error_y) + self.alpha * des_ff_y), 1)
-                    self.moveCmd.linear.z = min(max(-1, (1 - self.alpha) * self.controlZ.calculate_pid(nextWaypointPosition[2] - position[2]) + self.alpha * des_vel_z), 1)
+                    self.moveCmd.linear.z = min(max(-1, (1 - self.alpha) * self.controlZ.calculate_pid(self.nextWaypointPosition[2] - self.position.z) + self.alpha * des_vel_z), 1)
                     self.moveCmd.angular.z = min(max(-1,self.controlW.calculate_pid(-self.yaw)),1)
 
                     self.alpha *= 0.9
@@ -302,9 +310,10 @@ class PositionController:
                     if self.iteration == 100:
                         self.iteration = 0
                         self.quad.get_next_state("NAVIGATE")
+                        self.nextWaypoint = True
                     
-                    erx = self.prevWaypointPosition[0] - self.position[0]
-                    ery = self.prevWaypointPosition[1] - self.position[1]
+                    erx = self.prevWaypointPosition[0] - self.position.x
+                    ery = self.prevWaypointPosition[1] - self.position.y
                     
                     error_x = math.cos(self.yaw) * erx + math.sin(self.yaw) * ery
                     error_y = -math.sin(self.yaw) * erx + math.cos(self.yaw) * ery
@@ -312,7 +321,7 @@ class PositionController:
                     # PID
                     self.moveCmd.linear.x = min(max(-1, self.controlX.calculate_pid(error_x)), 1)
                     self.moveCmd.linear.y = min(max(-1, self.controlY.calculate_pid(error_y)), 1)
-                    self.moveCmd.linear.z = min(max(-1, self.controlZ.calculate_pid(prevWaypointPosition[2] - position[2])), 1)
+                    self.moveCmd.linear.z = min(max(-1, self.controlZ.calculate_pid(self.prevWaypointPosition[2] - self.position.z)), 1)
                     self.moveCmd.angular.z = min(max(-1, self.controlW.calculate_pid(-self.yaw)), 1)
 
                     self.velPub.publish(self.moveCmd)

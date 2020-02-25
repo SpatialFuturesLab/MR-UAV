@@ -4,7 +4,7 @@ import string
 
 import rospy
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import Twist, PoseStamped, Pose
+from geometry_msgs.msg import Twist, PoseStamped, Pose, PoseArray
 
 class NonBlockingConsole(object):
     def __enter__(self):
@@ -72,7 +72,9 @@ class CapturePoints:
 
 
 				elif c is not False:
-					if c.is_alpha():
+					# print c
+					lower_case_tools_list = [ch.lower() for ch in self.toolsList]
+					if c in lower_case_tools_list:
 						tool = c.upper()
 						try:
 							if tool in self.toolsList:
@@ -89,9 +91,9 @@ class CapturePoints:
 							else:
 								print "Invalid Key Press: {0}".tool
 						except Exception as e:
-							print(c)
+							# print(c)
 							print "\"Exception: GeomTool{0} not defined\" Cannot Capture Point from GeomTool{0}".format(tool)
-					if str(c).is_digit():
+					if c in self.pointsList:
 						try:
 							if str(c) in self.pointsList:
 								pose = self.snaphotPose[str(c)]

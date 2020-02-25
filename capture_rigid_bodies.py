@@ -1,56 +1,107 @@
+import sys, select, tty, termios
+import numpy as np
+import string
+
 import rospy
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import Twist, PoseStamped, Pose
-import numpy as np
 
-# TODO: Add capability to capture points from key board using key press
+class NonBlockingConsole(object):
+    def __enter__(self):
+        self.old_settings = termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin.fileno())
+        return self
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+
+    def get_data(self):
+        try:
+            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+                return sys.stdin.read(1)
+        except:
+            return '[CTRL-C]'
+        return False
+
+    def __exit__(self, type, value, traceback):
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
 
 class CapturePoints:
-	def __init__(self):
-		self.bebopPose = PoseStamped()
-		self.geomPose = PoseStamped()
+	def __init__(self, list_of_tools = list(string.ascii_uppercase), list_of_points = list(string.digits)):
+		self.capturePoints = True
 		self.geomPoseTool = dict()
-		self.count = 0
-		self.prevBebopPoint = None
-		self.prevGeomPoint = None
-		self.captureBebop = False
-		self.captureGeom = False
-
-		rospy.init_node('CapturePoints', anonymous=False)		
-		rospy.Subscriber('/bebop/joy',Joy, joyCallback)
+		self.prevGeomToolPoint = dict()
+		self.publishGeomToolPose = dict()
+		rospy.init_node('CaptureGeomToolPoints', anonymous=False)		
+		self.toolsList = list_of_tools
 		
-		if captureBebop:
-			self.captureBebop = True
-			rospy.Subscriber('/vrpn_client_node/bebop/pose',PoseStamped,pose_callback_bebop)
-			self.pose_pub_bebop = rospy.Publisher('bebop/captured_pose', PoseStamped, queue_size=10)
-		if captureGeom:
-			self.captureGeom = True
-			rospy.Subscriber('/vrpn_client_node/GeomTool/pose',PoseStamped,pose_callback_geom)
-			self.pose_pub_geom = rospy.Publisher('GeomTool/captured_pose', PoseStamped, queue_size=10)
-
-	def joy_callback(self, msg):
-		if msg.buttons[2] == 1:
-			pose = self.bebopPose 
-			cur_pt = np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
-			if self.prevBebopPoint is not None:
-				dist = np.linalg.norm(cur_pt -  self.prevBebopPoint)
-			if self.prevBebopPoint is None or dist > 0.1: 
-				self.pose_pub_bebop.publish(pose)
-				self.prevBebopPoint = cur_pt
-		if msg.buttons[4] == 1:
-			pose = self.geomPose
-			cur_pt = np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
-			if self.prevGeomPoint is not None:
-				dist = np.linalg.norm(cur_pt -  self.prevGeomPoint)
-			if self.prevGeomPoint is None or dist > 0.1: 
-				self.pose_pub_geom.publish(pose)
-				self.prevGeomPoint = cur_pt
+		self.snaphotPose = dict()
+		self.publishSnapshotPose = dict()
+		self.publishSnapshotPoseArray = rospy.Publisher('Snapshot/captured_pose', PoseArray, queue_size=10)
 		
-	def pose_callback_bebop(self, msg):
-		self.bebopPose = msg
+		self.pointsList = list_of_points
+		self.poseList = PoseArray()
+		
+		for p in self.pointsList:
+			callback = getattr(self, 'pose_callback_point' + p)
+			rospy.Subscriber('/vrpn_client_node/SnapPoint{0}/pose'.format(p),PoseStamped,callback)
+			self.publishSnapshotPose[p] = rospy.Publisher('SnapPoint{0}/captured_pose'.format(p), PoseStamped, queue_size=10)
+			self.snaphotPose[p] = None
 
-	def pose_callback_geom(self, msg):
-		self.geomPose = msg
+		for tool in self.toolsList:
+			callback = getattr(self, 'pose_callback_geom' + tool)
+			rospy.Subscriber('/vrpn_client_node/GeomTool{0}/pose'.format(tool),PoseStamped,callback)
+			self.publishGeomToolPose[tool] = rospy.Publisher('GeomTool{0}/captured_pose'.format(tool), PoseStamped, queue_size=10)
+			self.prevGeomToolPoint[tool] = None
+			self.geomPoseTool[tool] = None
+
+		self.publishVivePose = rospy.Publisher('vive/captured_pose', PoseStamped, queue_size=10)
+
+	
+	def key_reader(self):
+		with NonBlockingConsole() as nbc:
+			while self.capturePoints:
+				c = nbc.get_data()
+				if c == '\x1b': # Esc
+					self.capturePoints = False
+				if c == '\x20': # Space
+					for p in self.pointsList:
+						if self.snaphotPose[p] is not None:
+							self.poseList.append(self.snaphotPose[p])
+					self.publishSnapshotPoseArray.publish(self.poseList)
+					print "Publishing list of poses captured"
+					self.poseList = PoseArray()
+
+
+				elif c is not False:
+					if c.is_alpha():
+						tool = c.upper()
+						try:
+							if tool in self.toolsList:
+								pose = self.geomPoseTool[tool]
+								cur_pt = np.array([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
+								if self.prevGeomToolPoint[tool] is not None:
+									dist = np.linalg.norm(cur_pt -  self.prevGeomToolPoint[tool])
+								if self.prevGeomToolPoint[tool] is None or dist > 0.1:
+									self.publishGeomToolPose[tool].publish(pose)
+									self.prevGeomToolPoint[tool] = cur_pt
+									print "Capturing Point from GeomTool{0}".format(tool)
+								else:
+									print "\"Exception: Point too close\" Cannot Capture Point from GeomTool{0}".format(tool)
+							else:
+								print "Invalid Key Press: {0}".tool
+						except Exception as e:
+							print(c)
+							print "\"Exception: GeomTool{0} not defined\" Cannot Capture Point from GeomTool{0}".format(tool)
+					if str(c).is_digit():
+						try:
+							if str(c) in self.pointsList:
+								pose = self.snaphotPose[str(c)]
+								self.publishSnapshotPose[str(c)].publish(pose)
+								print "Capturing Point from Marker {0}".format(str(c))
+							else:
+								print "Invalid Key Press: {0}".format(c)
+						except Exception as e:
+							print "\"Exception: Marker {0} not defined\" Cannot Capture Point from Marker {0}".format(c)
+					
 
 	def pose_callback_geomA(self, msg):
 		self.geomPoseTool['A'] = msg
@@ -130,92 +181,41 @@ class CapturePoints:
 	def pose_callback_geomZ(self, msg):
 		self.geomPoseTool['Z'] = msg
 
-
-
-pose = PoseStamped()
-count = 0
-prev_captured_point = None
-
-def distance(l1, l2):
-	return math.sqrt( (l1[0] - l2[0]) **2 + (l1[1] - l2[1]) **2 + (l1[2] - l2[2]) **2 )
-
-
-def joyCallback(msg):
-	global pose,test_writer ,count, prev_captured_point
-	pose_pub = rospy.Publisher('bebop/captured_pose', PoseStamped, queue_size=10)
-	pose_pub2 = rospy.Publisher('GeomToolA/captured_pose', PoseStamped, queue_size=10)
-	dist = float('inf')	
+	def pose_callback_point0(self, msg):
+		self.snaphotPose['0'] = msg
 	
-	with open('test.csv', mode='a') as test_file:
-		test_writer = csv.writer(test_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-		if msg.buttons[2] == 1:
-			if prev_captured_point is not None:
-				cur_point = [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
-				dist = distance(cur_point, prev_captured_point)
-				print(dist)
-			if prev_captured_point is None or dist > 0.1: 
-				test_writer.writerow([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
-				pose_pub.publish(pose)
-				rospy.sleep(0.25)
-
-				markerPub = rospy.Publisher('bebopMarker', Marker, queue_size=1)
-				marker = Marker()
-				marker.header.frame_id = "/world"
-				marker.ns = "basic_shapes";
-				marker.id = count;
-				count += 1 
-				marker.type = Marker.SPHERE; # shapes -> http://wiki.ros.org/rviz/DisplayTypes/Marker
-				marker.action = Marker.ADD
-
-				marker.color.r = 0.0
-				marker.color.g = 1.0
-				marker.color.b = 0.0
-				marker.color.a = 1.0
-
-				marker.scale.x = 0.1;
-				marker.scale.y = 0.1;
-				marker.scale.z = 0.1;    
-				marker.pose = pose.pose
-				markerPub.publish(marker);
-				prev_captured_point = [pose.pose.position.x, pose.pose.position.y, pose.pose.position.z]
-		if msg.buttons[4] == 1:
-			test_writer.writerow([pose.pose.position.x, pose.pose.position.y, pose.pose.position.z])
-			pose_pub2.publish(pose)
-			rospy.sleep(0.25)
-
-			markerPub = rospy.Publisher('rigidBodyMarker', Marker, queue_size=1)
-			marker = Marker()
-			marker.header.frame_id = "/world"
-			marker.ns = "basic_shapes";
-			marker.id = count;
-			count += 1 
-			marker.type = Marker.SPHERE; # shapes -> http://wiki.ros.org/rviz/DisplayTypes/Marker
-			marker.action = Marker.ADD
-
-			marker.color.r = 0.0
-			marker.color.g = 1.0
-			marker.color.b = 0.0
-			marker.color.a = 1.0
-
-			marker.scale.x = 0.1;
-			marker.scale.y = 0.1;
-			marker.scale.z = 0.1;    
-			marker.pose = pose.pose
-
-			markerPub.publish(marker);
-
-def poseCallback(msg):
-	global pose
-	pose = msg
-
-def main():
-	rospy.init_node('spacepoints', anonymous=False)		
-	rospy.Subscriber('/vrpn_client_node/bebop/pose',PoseStamped,poseCallback)
-	rospy.Subscriber('/bebop/joy',Joy, joyCallback)
+	def pose_callback_point1(self, msg):
+		self.snaphotPose['1'] = msg
 	
-	global test_writer
-	rospy.spin()
+	def pose_callback_point2(self, msg):
+		self.snaphotPose['2'] = msg
+	
+	def pose_callback_point3(self, msg):
+		self.snaphotPose['3'] = msg
+	
+	def pose_callback_point4(self, msg):
+		self.snaphotPose['4'] = msg
+	
+	def pose_callback_point5(self, msg):
+		self.snaphotPose['5'] = msg
+	
+	def pose_callback_point6(self, msg):
+		self.snaphotPose['6'] = msg
+	
+	def pose_callback_point7(self, msg):
+		self.snaphotPose['7'] = msg
+	
+	def pose_callback_point8(self, msg):
+		self.snaphotPose['8'] = msg
+	
+	def pose_callback_point9(self, msg):
+		self.snaphotPose['9'] = msg
+
+	def pose_callback_vive(self, msg):
+		self.publishVivePose(msg)
+
 	
 
 if __name__ == '__main__':
-	main()
+	capture_geom_tools = CapturePoints()
+	capture_geom_tools.key_reader()

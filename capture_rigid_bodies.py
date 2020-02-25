@@ -63,12 +63,15 @@ class CapturePoints:
 				if c == '\x1b': # Esc
 					self.capturePoints = False
 				if c == '\x20': # Space
-					for p in self.pointsList:
-						if self.snaphotPose[p] is not None:
-							self.poseList.append(self.snaphotPose[p])
-					self.publishSnapshotPoseArray.publish(self.poseList)
-					print "Publishing list of poses captured"
-					self.poseList = PoseArray()
+					try:
+						for p in self.pointsList:
+							if self.snaphotPose[p] is not None:
+								self.poseList.poses.append(self.snaphotPose[p].pose)
+						self.publishSnapshotPoseArray.publish(self.poseList)
+						print "Publishing list of poses captured"
+						self.poseList = PoseArray()
+					except:
+						print "Cannot send list of poses!!"
 
 
 				elif c is not False:

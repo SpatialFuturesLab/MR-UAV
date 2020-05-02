@@ -60,9 +60,9 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 	```git clone https://github.com/ros-drivers/vrpn_client_ros.git src/vrpn_client_ros```
 
-6. __Clone SFL_Bebop workspace__
+6. __Clone SFL_Bebop workspace and MRAC_IAAC workspace__
 
-	```git clone https://github.com/SpatialFuturesLab/MR-UAV.git```
+	```git clone --recursive https://github.com/SpatialFuturesLab/MR-UAV.git```
 
 
 ### 3. Compilation & Running

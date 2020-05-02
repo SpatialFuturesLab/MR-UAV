@@ -101,15 +101,19 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 ### 1. Capture Points from Rigid Bodies
 1. __Define Rigid Body (Windows)__
    * Create a rigid body in Motive using a minimum of 3 markers
-   * Label it using the naming convention GeomToolX where X is an upper case letter (A-Z) 
+   * Label it using the naming convention GeomToolX where X is an upper case letter (A-Z)
+   * To capture points from the same rigid body, create a rigid body in Motive. Use the naming convention SnapToolX where X is a number (0-9) to define different pivot points on the rigid body. 
    
 2. __Run Python Script (Ubuntu)__
    * Run Python script(Ubuntu) capture_rigid_body.py
    * With the terminal active, press a key X on the keyboard (A - Z) to capture the rigid body GeomToolX corresponding to the pressed key
    * The position and orientation of this rigid body can be obtained by subscribing to the rostopic /rigid_body/GeomToolX
+   * Marker Points from a single rigid body could be captured by pressing keys (0-9) on the keyboard. Press spacebar on the keyboard to send all the captured Marker points to Grasshopper 
+   
    ```bebop```
    
    ```rostopic echo /rigid_body/GeomToolX```
+   ```rostopic echo /rigid_body/SnapToolX```
    
 ### 2. Autonomous Flight
 1. __Launch Drone__
@@ -124,7 +128,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 	```python bebop_controller.py``` 
 
 3. __Toggle Autonomous Mode__
-	* Press Buttons (TODO) on Joystick to toggle to/back from autonomous mode 
+	* Press Buttons RB + LB on Joystick to toggle to/back from autonomous mode 
 	* In autonomous mode, drone can navigate to the positions given to it
 	
 4. __Define Waypoints__ 
@@ -149,8 +153,3 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 	* Update script in bebop_autonomy/bebop_tools/config/xbox360.yaml to change sensitivity of drone commands from joystick
 	* Change scale in lines 13, 18, 23, 28 to 0.5
-### 4. Marker Snapshot
-WIP
-```rostopic pub /bebop/setpoint  geometry_msgs/Pose '{position:  {x: -0.5, y: -0.5, z: 1.0}, orientation: {x: 0.0,y: 0.0,z: 0.0, w: 1.0}}'```
-
-

@@ -61,6 +61,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 	```git clone https://github.com/ros-drivers/vrpn_client_ros.git src/vrpn_client_ros```
 
 6. __Clone SFL_Bebop workspace and MRAC_IAAC workspace__
+	The MRAC_IAAC workspace is added in the mrac_iaac folder.
 
 	```git clone --recursive https://github.com/SpatialFuturesLab/MR-UAV.git```
 
@@ -125,7 +126,7 @@ Software for the Bebop Autonomy and integration with Grasshopper.
 
 	```bebop```
 	
-	```python bebop_controller.py``` 
+	```python bebop_position_controller.py``` 
 
 3. __Toggle Autonomous Mode__
 	* Press Buttons RB + LB on Joystick to toggle to/back from autonomous mode 
